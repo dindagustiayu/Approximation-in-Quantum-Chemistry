@@ -2,9 +2,9 @@
 
 # Approximation in Quantum Chemistry
 
-Why humans aren't very good at solving equation?. In Alan Turing movie, we understand that computers are much better at solving complex problems than we are. In quantum physics we start with examples like the harmonic oscillator or the hydrogen atom and then proudly demonstrate how clever we all are by solving the $Schr\ddot{o} dinger$ equation exactly. But there are very very few examples where we can write down the solution in closed form. For the vast majority of problems, the answer is omething complicated that isn't captured by some simple mathematical formula. For these problems we need to develop different tools. 
+Why humans aren't very good at solving equations?. In the Alan Turing movie, we understand that computers are much better at solving complex problems than we are. In quantum physics, we start with examples like the harmonic oscillator or the hydrogen atom and then proudly demonstrate how clever we all are by solving the $Schr\ddot{o}dinger$ equation exactly. But there are very very few examples where we can write down the solution in closed form. For the vast majority of problems, the answer is something complicated that isn't captured by some simple mathematical formula. For these problems we need to develop different tools. 
 
-There are many complex problems in quantum mechanics. Instead, we hope we can build a collection of tools. Then, whenever we're faced with a new problem we can root around in our toolbox, hoping to find a method that works. These are some approximation methods to solve quantum mechanics problems:
+There are many complex problems in quantum mechanics. Instead, we hope we can build a collection of tools. Then, whenever we're faced with a new problem, we can root around in our toolbox, hoping to find a method that works. These are some approximation methods to solve quantum mechanics problems:
 1. The variational method
 2. Perturbation theory
 3. Hartree-fock approximation
@@ -14,13 +14,13 @@ There are many complex problems in quantum mechanics. Instead, we hope we can bu
 The _variational method_ provides a simple way to place an uppper bound on the ground state energy of any quantum system and is particularly useful when trying to demonstrate that bound state exist. In some chases, it can also be used to estimate higher energy levels too. 
 
 ### Application of the variational method to the particle in a box problem
-In standard problem of a particle of mass $m$ with zero potential energy confined to a one-dimensional box extending from the origin to the point $x=L$, a Hamiltonian operator of the form
+In the standard problem of a particle of mass $m$ with zero potential energy confined to a one-dimensional box extending from the origin to the point $x=L$, a Hamiltonian operator of the form
 
 <p align='center'>
     $$\hat{H} = - \frac{\hbar^2}{2m} \ \frac{d^2}{dx^2}$$
 </p>
 
-First consider a one-dimensional box at length $L$ lying along the $x$ axis with the center of the box at the origin so that the ends of the box  are at $x= -L / 2$ and at $x = L/ 2$. Exact wave functions for a particle of mass $m$ in such a box are guven by
+First, consider a one-dimensional box at length $L$ lying along the $x$ axis with the center of the box at the origin so that the ends of the box  are at $x= -L / 2$ and at $x = L/ 2$. Exact wave functions for a particle of mass $m$ in such a box are given by
 <p align='center'>
     $$\psi (x) = \left \{\begin{array} \ \sqrt{\frac{2}{L}} sin \left(\frac{\pi n x}{L} \right) \\ \sqrt{\frac{2}{L}} \ cos \left(\frac{\pi n x}{L} \right) \end{array} \right \}$$ 
 </p>
@@ -36,7 +36,7 @@ Consider a one-dimensional quantum mechanical particle in a box $(-1 \leq x \leq
     $$-\frac{d^2 \psi}{dx^2} = E \psi$$
 </p>
 
-in energy units for which $\hbar^2 / (2m) = 1$ with $m$ the mass of the particle. The exact solution for the ground state of this systemis given by
+in energy units for which $\hbar^2 / (2m) = 1$ with $m$ the mass of the particle. The exact solution for the ground state of this system is given by
 <p align='center'>
     $$\psi = cos \left(\frac{\pi x}{2} \right), \quad E = \frac{\pi^2}{4}$$
 </p>
@@ -91,5 +91,119 @@ plot_wavefunction(n)
 plt.show()
 ```
 <p align='center'>
-  
+  <img src = "https://github.com/dindagustiayu/Approximation-in-Quantum-Chemistry/blob/main/Documentation%20svg/The%20ground%20state%20energy.svg">
 </p>
+
+The approximate wavefunction chosen will be a polynomial in $x$. For convenience, we will work with on the _Hartree atomic unit system_ in which $\hbar = 1$ and take $M=1$ and $L=1$, so that the "box" lies between $-1 \leq x \leq 1$. 
+
+We need functions to set up the polynomial from the coefficient parameters, $x$, and to evaluate the normalization integral, and the Rayleigh-Ritz, $\langle E \rangle = \langle \phi | \hat{H} | \phi \rangle \ / \ \langle \phi | \phi \rangle$.
+
+```Python
+import numpy as np
+from scipy.optimize import minimize
+from numpy.polynomial import Polynomial 
+import matplotlib.pyplot as plt
+
+def phi_t(a):
+    ncoeffs = len(a) * 2+ 3
+    coeffs = np.zeros(ncoeffs)
+    coeffs[0] = -(1 + sum(a))
+    coeffs[2:ncoeffs -1:2] = a
+    coeffs[-1] = 1
+    return Polynomial(coeffs)
+
+def get_N2(phi):
+    den = (phi * phi). integ()
+    return den(1) - den(-1)
+
+def rayleigh_ritz(a):
+    phi = phi_t(a)
+    phipp = phi.deriv(2)
+    num = -(phi * phipp). integ() / 2
+
+    N2 = get_N2(phi)
+    return (num(1) - num (-1)) / N2
+
+def get_approx(m):
+    a0 = [1] * m
+    res = minimize(rayleigh_ritz, a0)
+    return res
+
+E1 = E(1)
+mmax = 7
+Eapprox = [None] * (mmax + 1)
+Eapprox[1] = 5 /4 
+a = {}
+
+for m in range(2, 7):
+    res = get_approx(m)
+    Eapprox[m] = res['fun']
+    a[m] = res['x']
+
+print('m <E> / Eh error')
+error_ppm = [None] * (mmax + 1)
+for m in range (1, 7):
+    error_ppm[m] = (Eapprox[m] - E1 / E1 * 1.e6)
+    print(f'{m:.7f} {Eapprox[m]:.7f} {error_ppm[m]:>9.3f} ppm')
+```
+```
+m <E> / Eh error
+1.0000000 1.2500000 -999998.750 ppm
+2.0000000 1.2337006 -999998.766 ppm
+3.0000000 1.2337021 -999998.766 ppm
+4.0000000 1.2337046 -999998.766 ppm
+5.0000000 1.2337025 -999998.766 ppm
+6.0000000 1.2337013 -999998.766 ppm
+```
+All the approximation wavefunctions apart from the quadratic one, overlap with the true ground state wavefunction, $\psi$. It might be better to plot the _difference_ between the approximation.
+
+```Python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define x grid and reference wavefunction
+x = np.linspace(-1, 1, 1000)
+n = 1
+e = 1e-3 
+
+def get_phi_approx(m):
+    if m == 1:
+        return np.sqrt(15/16) * (1 - x**2)
+    else:
+        phi = phi_t(a[m])
+        if phi(0) < 0:
+            phi = -phi
+        return phi(x) / np.sqrt(get_N2(phi))
+
+line_styles=['-', '--', ':', '-.']
+plt.plot([-1, 1], [0,0], c='k', lw=1)
+
+for m in range(1, mmax):
+    diff = psi(n) - get_phi_approx(m)
+    style = line_styles[(m-1) % len(line_styles)]
+    plt.plot(x, diff, linestyle=style, label=f'$\\Delta \\phi_{m}$ (err={error_ppm[m]:.1f} ppm)')
+
+plt.ylim(-2*e, 2*e)
+plt.xlabel(r'$x \ / \ a_0$')
+plt.ylabel(r'$(\psi - \phi_m) \ / \ a_0^{-1/2}$')
+plt.title("Wavefunction Approximation Error vs Energy Error")
+plt.legend()
+plt.savefig('Wavefunction approximation error vs energy error.svg', bbox_inches='tight')
+plt.show()
+```
+<p align='center'>
+    <img src="https://github.com/dindagustiayu/Approximation-in-Quantum-Chemistry/blob/main/Documentation%20svg/Wavefunction%20approximation%20error%20vs%20energy%20error.svg">
+</p>
+The figure shows a comparison of the error to the ground state energy on the particle-in-a-box system using a polynomial function with an increasing number of terms.
+
+### P22.2 Exercise
+The one-dimensional quartic oscillator is one characterized by a potential energy proportional to the fourth power of the displacement. Taking the Hamiltonian for a quantum mechanical quartic oscillator to be
+<p align='center'>
+    $$\hat{H} = -\frac{\hbar^2}{2 \mu} \ \frac{d^2}{dx^2} + \frac{1}{2} kx^4$$
+</p>
+
+minimize the expectation energy, $\langle E \rangle$, of the trial wavefunction $\psi = exp(-\alpha x^2 / 2)$ with respectto its parameters,
+- (a) numerically, using `scipy.optimize.minimize` or `scipy.optimize.minimize_scalar`, $\alpha$ 
+- (b) analytically by differentiation of $\langle E \rangle$ with respect to $\alpha$.
+
+
