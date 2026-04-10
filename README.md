@@ -1,4 +1,4 @@
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)]()
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/dindagustiayu/Approximation-in-Quantum-Chemistry/blob/main/Variational%20Principle.py)
 
 # Approximation in Quantum Chemistry
 
@@ -53,7 +53,7 @@ with respect to the coefficients $a_n$. Taking the basis functions to have the f
 
 use `scipy.optimize.minimize` and `scipy.integrate.quad` to find the optimum value of the expectation value (Rayleigh-Ritz ratio):
 <p align='center'>
-    $$\mathcal{E} = \frac{\langle \psi_{trial} | \hat{H} | \psi_{trial}}{\langle \psi_{trial} | \psi_{trial} \rangle} \rangle = \frac{\int_{-1}^{1} \psi_{trial} \frac{d^2}{dx^2} \psi_{trial} \ dx}{\int_{-1}^{1} \psi_{trial} \psi_{trial} \ dx}$$
+    $$\mathcal{E} = \frac{\langle \psi_{trial} |\hat{H}| \psi_{trial}}{\langle \psi_{trial} | \psi_{trial} \rangle} \rangle = \frac{\int_{-1}^{1} \psi_{trial} \frac{d^2}{dx^2} \psi_{trial} \ dx}{\int_{-1}^{1} \psi_{trial} \psi_{trial} \ dx}$$
 </p>
 
 Compare the estimated energy, $\mathcal{E}$, with the exact answer for $N = 1, \ 2, \ 3, \ 4$.
@@ -96,7 +96,7 @@ plt.show()
 
 The approximate wavefunction chosen will be a polynomial in $x$. For convenience, we will work with on the _Hartree atomic unit system_ in which $\hbar = 1$ and take $M=1$ and $L=1$, so that the "box" lies between $-1 \leq x \leq 1$. 
 
-We need functions to set up the polynomial from the coefficient parameters, $x$, and to evaluate the normalization integral, and the Rayleigh-Ritz, $\langle E \rangle = \langle \phi | \hat{H} | \phi \rangle \ / \ \langle \phi | \phi \rangle$.
+We need functions to set up the polynomial from the coefficient parameters, $x$, and to evaluate the normalization integral, and the Rayleigh-Ritz, $\langle E \rangle = \langle \phi |\hat{H}| \phi \rangle / \langle \phi | \phi \rangle$.
 
 ```Python
 import numpy as np
@@ -206,4 +206,136 @@ minimize the expectation energy, $\langle E \rangle$, of the trial wavefunction 
 - (a) numerically, using `scipy.optimize.minimize` or `scipy.optimize.minimize_scalar`, $\alpha$ 
 - (b) analytically by differentiation of $\langle E \rangle$ with respect to $\alpha$.
 
+### Solution
+We need the seconde derivative of the wavefunction:
+1. The first derivative
 
+<p align='center'>
+    $$\begin{align} \psi &= e^{-\alpha q^2 / 2} \\ \frac{d \psi}{dq} &= e^{-\alpha q^2 / 2} \cdot (- \alpha q) = -\alpha q \psi \end{align}$$
+</p>
+
+2. The second derivative
+
+<p align='center'>
+    $$\begin{align} \frac{d^2 \psi}{dq^2} &= (\alpha) \psi + (- \alpha q)(- \alpha q \psi) \\ \frac{d^2 \psi}{dq^2} &= -\alpha \psi + \alpha^2 q^2 \psi \\ &=\alpha (\alpha q^2 - 1) \psi \end{align}$$
+</p>
+
+3. Define a function to calculate the Rayleigh-Ritz ratio,
+
+<p align='center'>
+    $$\langle E' \rangle = \frac{\langle \psi | \hat{H} | \psi \rangle}{\langle \psi | \psi \rangle}$$
+</p>
+
+where
+
+<p align='center'>
+    $$\begin{align} \langle \psi | \hat{H} | \psi \rangle &=\int_{- \infty}^{\infty} \psi \left(-\frac{1}{2} \frac{d^2 \psi}{dq^2} + \frac{1}{2} q^4 \psi \right) dq \\ &=\frac{1}{2} \int_{-\infty}^{\infty} (q^4 - \alpha^2 q^2 + \alpha) \psi^2 \ dq \end{align}$$
+</p>
+
+4. Bracket the minimum in $\langle E' \rangle (\alpha)$ using the value $\alpha_a = 1.0, \ \alpha_b = 1.5 \ \mbox{and} \ \alpha_c = 2.0, \ \mbox{since} \langle E' \rangle (\alpha_a) > \langle E' \rangle (\alpha_b) \ \mbox{and} \ \langle E' \rangle (\alpha_c) > \langle E' \rangle (\alpha_b)$.
+
+```Python
+import numpy as np
+from scipy.integrate import quad
+from scipy.optimize import minimize_scalar
+
+# 1. first derivative
+def psi(q, alpha):
+    return np.exp(-alpha * q**2 /2)
+
+# 2. Second derivative
+def psi2(q, alpha):
+    return psi(q, alpha)**2
+
+# 3. Calculate the Rayleigh-Ritz
+def rayleigh_ritz(alpha):
+    def func(q, alpha):
+        return 0.5 * (q**4 - (alpha * q)**2 + alpha) * psi2(q, alpha)
+
+# Final integration
+    num, _ = quad(func, -np.inf, np.inf, args=(alpha,))
+    det,_ = quad(psi2, -np.inf, np.inf, args=(alpha,))
+    return num /det
+
+# Final approximation
+minimize_scalar(rayleigh_ritz, bracket=(1, 1.5, 2))
+```
+```
+ message: 
+          Optimization terminated successfully;
+          The returned value satisfies the termination criteria
+          (using xtol = 1.48e-08 )
+ success: True
+     fun: 0.5408435888652783
+       x: 1.4422495872637284
+     nit: 10
+    nfev: 13
+```
+The optimum value of $\alpha$ is $1.422$, giving an energy of $\langle E' \rangle = 0.541$ in units of $(k \hbar^4 / \mu^2)^{1/3}$
+
+5. For the analytical solution, define,
+   
+<p align='center'>
+    $$In = \int_{\infty}^{\infty} q^{2n} e^{- \alpha q^2} \ dq$$
+</p>
+
+integrate by parts to derive the recursion relation
+
+<p align='center'>
+    $$I_n = \frac{2n -1}{2 \alpha} I_{n-1}$$
+</p>
+
+and note that $I_0 = \sqrt{\pi / \alpha}$.
+
+__Solution__:
+    
+<p align='center'>
+    $$\begin{align} I_n &= \int_{- \infty}^{\infty} q^{2n} e^{- \alpha q^2} \ dq, \quad u = q^{2n-1} \ \mbox{and} \ dv=qe^{- \alpha q^2} \ dq \\ \int u \ dv &= uv - \int v \ dv \\ I_n &=\int_{- \infty}^{\infty} q^{2n-1} qe^{- \alpha q^2} \ dq \\ &= \left[q^{2n-1} \left(- \frac{1}{2 \alpha} \right) e^{- \alpha q^2} \right]_{- \infty}^{\infty} - \int_{- \infty}^{\infty} (2n - 1)q^{2n-2} \left(- \frac{1}{2 \alpha} \right) e^{- \alpha q^2} \ dq \\ &=0 - \frac{2n -1}{2 \alpha} I_{n-1} \end{align}$$
+</p>
+
+The integrals we need are therefore $I_0 = \sqrt{\pi / \alpha}$ given,
+<p align='center'>
+    $$\begin{align} I_1 &=\frac{1}{2 \alpha} I_0 \\ I_2 &=\frac{3}{2 \alpha} I_1 \\ &=\frac{3}{4 \alpha^2} I_0 \end{align}$$ 
+</p>
+
+The Rayleigh-Ritz ratio is therefore:
+
+<p align='center'>
+    $$ \begin{align} \langle E' \rangle = \frac{\langle \psi | \hat{H} | \psi \rangle}{\langle \psi|\psi \rangle} &= \frac{1}{2 I_0} \int_{- \infty}^{\infty} (q^4 - \alpha^2 q^2 + \alpha) \psi^2 \ dq \\ &=\frac{1}{2 I_0} [I_2 - \alpha^2 I_1 + \alpha I_0] &= \frac{1}{2 I_0} \left [\frac{3}{4 \alpha^2} I_0 - \alpha^2 \frac{1}{2 \alpha} I_0 + \alpha I_0 \right] \\ &=\frac{3}{8 \alpha^2} + \frac{\alpha}{4} \end{align}$$
+</p>
+
+This function has a minimum at
+   
+<p align='center'>
+    $$\begin{align} \frac{d \langle E' \rangle}{d \alpha} &= - \frac{3}{4 \alpha^3} + \frac{1}{4} \\ \alpha &=3^{1/3} \end{align}$$
+</p>
+
+This Python script to confirm the numerical result with integrals:
+
+```Python
+alpha = 3**(1/3)
+print(f'alpha = {alpha:.3f}')
+print(f"optimum <E'> = {rayleigh_ritz(alpha):.3f}")
+```
+```
+alpha = 1.442
+optimum <E'> = 0.541
+```
+The optimum value of $\alpha$ is $1.422$, giving an energy of $\langle E' \rangle = 0.541$. We can learn more by plotting this $\langle E' \rangle$ as a function of $\alpha$:
+
+```Python
+import matplotlib.pyplot as plt
+
+alpha_grid = np.linspace(0.5, 2.5, 25)
+Eexp_grid = [rayleigh_ritz(alpha) for alpha in alpha_grid]
+plt.plot(alpha_grid, Eexp_grid, label=f"$optimum < E' > = {rayleigh_ritz(alpha):.3f}$")
+plt.xlabel(r'$q$')
+plt.ylabel(r"$\langle E' \rangle $")
+plt.title(r"The differentiation of $\langle E \rangle \ to \ \alpha$")
+plt.legend()
+plt.savefig('The differentiation 0f E.svg', bbox_inches='tight')
+plt.show()
+```
+<p align='center'>
+    <img src="https://github.com/dindagustiayu/Approximation-in-Quantum-Chemistry/blob/main/Documentation%20svg/The%20differentiation%200f%20E.svg">
+</p>
